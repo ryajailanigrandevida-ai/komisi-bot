@@ -81,46 +81,33 @@ async def input_data(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             if v and v[0]:
                 next_row = 6 + i + 1
 
-        # Nomor urut
         next_no = next_row - 5
-
-        # Struktur kolom: A=No, B=Tanggal, C=Properti, D=Bulan(formula),
-        # E=Komisi, F=Ag1Nama, G=Ag1Rp, H=Ag1%(formula),
-        # I=Ag2Nama, J=Ag2Rp, K=Ag2%(formula),
-        # L=Ag3Nama, M=Ag3Rp, N=Ag3%(formula),
-        # O=Ag4Nama, P=Ag4Rp, Q=Ag4%(formula)
-        # R=Status, S=Ket
-
-        agents = (d['agents'] + [(None, None)] * 4)[:4]
 
         def rp(v):
             if not v: return ''
             try: return int(str(v).replace(',','').replace('.',''))
             except: return ''
 
-        row = [
-            next_no,           # A - No
-            d['tanggal'],      # B - Tanggal
-            d['properti'],     # C - Properti
-            '',                # D - Bulan (formula, kosongkan)
-            komisi_int,        # E - Komisi
-            agents[0][0] or '',# F - Agent1 Nama
-            rp(agents[0][1]),  # G - Agent1 Rp
-            '',                # H - Agent1 % (formula)
-            agents[1][0] or '',# I - Agent2 Nama
-            rp(agents[1][1]),  # J - Agent2 Rp
-            '',                # K - Agent2 % (formula)
-            agents[2][0] or '',# L - Agent3 Nama
-            rp(agents[2][1]),  # M - Agent3 Rp
-            '',                # N - Agent3 % (formula)
-            agents[3][0] or '',# O - Agent4 Nama
-            rp(agents[3][1]),  # P - Agent4 Rp
-            '',                # Q - Agent4 % (formula)
-            d['status'],       # R - Status
-            d['ket'],          # S - Keterangan
-        ]
+        agents = (d['agents'] + [(None, None)] * 4)[:4]
 
-        sheet.insert_row(row, next_row, value_input_option='USER_ENTERED')
+        # Update kolom A (No), B (Tanggal), C (Properti), E (Komisi)
+        sheet.update(f'A{next_row}', [[next_no]])
+        sheet.update(f'B{next_row}', [[d['tanggal']]])
+        sheet.update(f'C{next_row}', [[d['properti']]])
+        sheet.update(f'E{next_row}', [[komisi_int]])
+
+        # Update agent kolom F,G / I,J / L,M / O,P
+        agent_cols = [('F','G'), ('I','J'), ('L','M'), ('O','P')]
+        for idx, (col_nama, col_rp) in enumerate(agent_cols):
+            nama, r = agents[idx]
+            if nama:
+                sheet.update(f'{col_nama}{next_row}', [[nama]])
+                sheet.update(f'{col_rp}{next_row}', [[rp(r)]])
+
+        # Update Status (R) dan Ket (S)
+        sheet.update(f'R{next_row}', [[d['status']]])
+        if d['ket']:
+            sheet.update(f'S{next_row}', [[d['ket']]])
 
         agents_txt = '\n'.join([f'  • {n}: Rp {rp(r):,}' for n,r in d['agents'] if n])
         reply = (
