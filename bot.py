@@ -17,7 +17,8 @@ def get_sheet():
         scopes=['https://www.googleapis.com/auth/spreadsheets']
     )
     gc = gspread.authorize(creds)
-    return gc.open_by_key(SHEET_ID).sheet1
+    return gc.open_by_key(SHEET_ID).worksheet('Transaksi Komisi')
+
 
 def parse_input(text):
     parts = [x.strip() for x in text.split('|')]
@@ -77,7 +78,8 @@ async def input_data(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         for nama, rp in (d['agents'] + [(None,None)]*4)[:4]:
             row.extend([nama or '', rp or ''])
         row.extend([d['status'], d['ket']])
-        sheet.append_row(row)
+        sheet.append_row(row, value_input_option='USER_ENTERED', insert_data_option='INSERT_ROWS', table_range='A6')
+
         agents_txt = '\n'.join([f'  • {n}: Rp {int(str(r).replace(",","").replace(".","")  ):,}' for n,r in d['agents'] if n])
         reply = (
             f'✅ Tersimpan!\n\n'
