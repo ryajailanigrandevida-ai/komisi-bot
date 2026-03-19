@@ -19,7 +19,6 @@ def get_sheet():
     gc = gspread.authorize(creds)
     return gc.open_by_key(SHEET_ID).worksheet('Transaksi Komisi')
 
-
 def parse_input(text):
     parts = [x.strip() for x in text.split('|')]
     data = {
@@ -78,15 +77,12 @@ async def input_data(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         for nama, rp in (d['agents'] + [(None,None)]*4)[:4]:
             row.extend([nama or '', rp or ''])
         row.extend([d['status'], d['ket']])
-               all_values = sheet.get('B6:B55')
+        all_values = sheet.get('B6:B55')
         next_row = 6
         for i, val in enumerate(all_values):
             if val and val[0]:
                 next_row = 6 + i + 1
         sheet.insert_row(row, next_row, value_input_option='USER_ENTERED')
-
-
-
         agents_txt = '\n'.join([f'  • {n}: Rp {int(str(r).replace(",","").replace(".","")  ):,}' for n,r in d['agents'] if n])
         reply = (
             f'✅ Tersimpan!\n\n'
