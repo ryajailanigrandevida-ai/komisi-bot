@@ -1,4 +1,4 @@
-import os, json, re
+import os, json
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import gspread
@@ -73,16 +73,31 @@ async def input_data(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         d = parse_input(raw)
         sheet = get_sheet()
         komisi_int = int(str(d['komisi']).replace(',','').replace('.',''))
-        row = ['', d['tanggal'], d['properti'], '', komisi_int]
-        for nama, rp in (d['agents'] + [(None,None)]*4)[:4]:
-            row.extend([nama or '', rp or ''])
-        row.extend([d['status'], d['ket']])
-        all_values = sheet.get('B6:B55')
+
+        # Cari nomor urut berikutnya
+        all_vals_a = sheet.get('A6:A55')
+        next_no = 1
+        for v in all_vals_a:
+            if v and v[0]:
+                try:
+                    next_no = int(v[0]) + 1
+                except:
+                    pass
+
+        # Cari baris kosong berikutnya (B6:B55)
+        all_vals_b = sheet.get('B6:B55')
         next_row = 6
-        for i, val in enumerate(all_values):
-            if val and val[0]:
+        for i, v in enumerate(all_vals_b):
+            if v and v[0]:
                 next_row = 6 + i + 1
+
+        row = [next_no, d['tanggal'], d['properti'], '', komisi_int]
+        for nama, rp in (d['agents'] + [(None,None)]*4)[:4]:
+            row.extend([nama or '', int(str(rp).replace(',','').replace('.','')) if rp else ''])
+        row.extend([d['status'], d['ket']])
+
         sheet.insert_row(row, next_row, value_input_option='USER_ENTERED')
+
         agents_txt = '\n'.join([f'  • {n}: Rp {int(str(r).replace(",","").replace(".","")  ):,}' for n,r in d['agents'] if n])
         reply = (
             f'✅ Tersimpan!\n\n'
@@ -99,15 +114,16 @@ async def cek(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ALLOWED_USER: return
     try:
         sheet = get_sheet()
-        rows = sheet.get_all_values()[1:]
+        rows = sheet.get('B6:E55')
         if not rows:
             await update.message.reply_text('Belum ada data.'); return
-        last5 = rows[-5:]
+        filled = [r for r in rows if r and len(r) > 1 and r[1]]
+        last5 = filled[-5:]
         msg = '📋 5 Transaksi Terakhir:\n\n'
         for r in reversed(last5):
             try:
-                komisi = int(str(r[2]).replace(',',''))
-                msg += f'🏠 {r[1]}\n💰 Rp {komisi:,}  |  {r[11] if len(r)>11 else ""}\n\n'
+                komisi = int(str(r[3]).replace(',','').replace('.',''))
+                msg += f'🏠 {r[1]}\n💰 Rp {komisi:,}\n\n'
             except:
                 msg += f'🏠 {r[1]}\n\n'
         await update.message.reply_text(msg)
@@ -118,15 +134,19 @@ async def total(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ALLOWED_USER: return
     try:
         sheet = get_sheet()
-        rows = sheet.get_all_values()[1:]
+        rows = sheet.get('E6:E55')
         total_komisi = 0
+        count = 0
         for r in rows:
-            try:
-                total_komisi += int(str(r[4]).replace(',','').replace('.',''))
-            except: pass
+            if r and r[0]:
+                try:
+                    total_komisi += int(str(r[0]).replace(',','').replace('.',''))
+                    count += 1
+                except:
+                    pass
         msg = (
             f'📊 TOTAL KOMISI 2026\n\n'
-            f'Jumlah Transaksi: {len([r for r in rows if r[2]])}\n'
+            f'Jumlah Transaksi: {count}\n'
             f'Total Komisi: Rp {total_komisi:,}'
         )
         await update.message.reply_text(msg)
