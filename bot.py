@@ -90,13 +90,13 @@ async def input_data(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
         agents = (d['agents'] + [(None, None)] * 4)[:4]
 
-        # Update kolom utama
+        # Kolom utama
         sheet.update(f'A{next_row}', [[next_no]])
         sheet.update(f'B{next_row}', [[d['tanggal']]])
         sheet.update(f'C{next_row}', [[d['properti']]])
         sheet.update(f'E{next_row}', [[komisi_int]])
 
-        # Update agent kolom F,G / I,J / L,M / O,P
+        # Agent kolom: F,G / I,J / L,M / O,P
         agent_cols = [('F','G'), ('I','J'), ('L','M'), ('O','P')]
         for idx, (col_nama, col_rp) in enumerate(agent_cols):
             nama, r = agents[idx]
@@ -116,10 +116,10 @@ async def input_data(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             except:
                 pass
 
-        # Update Status dan Ket
-        sheet.update(f'R{next_row}', [[d['status']]])
+        # Status di kolom AD, Keterangan di kolom AE
+        sheet.update(f'AD{next_row}', [[d['status']]])
         if d['ket']:
-            sheet.update(f'S{next_row}', [[d['ket']]])
+            sheet.update(f'AE{next_row}', [[d['ket']]])
 
         agents_txt = '\n'.join([f'  • {n}: Rp {rp(r):,}' for n,r in d['agents'] if n])
         reply = (
