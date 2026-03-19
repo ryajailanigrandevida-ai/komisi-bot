@@ -73,7 +73,7 @@ async def input_data(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         d = parse_input(raw)
         sheet = get_sheet()
         komisi_int = int(str(d['komisi']).replace(',','').replace('.',''))
-        row = [d['tanggal'], d['properti'], komisi_int]
+        row = ['', d['tanggal'], d['properti'], '', komisi_int]
         for nama, rp in (d['agents'] + [(None,None)]*4)[:4]:
             row.extend([nama or '', rp or ''])
         row.extend([d['status'], d['ket']])
@@ -122,11 +122,11 @@ async def total(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         total_komisi = 0
         for r in rows:
             try:
-                total_komisi += int(str(r[2]).replace(',','').replace('.',''))
+                total_komisi += int(str(r[4]).replace(',','').replace('.',''))
             except: pass
         msg = (
             f'📊 TOTAL KOMISI 2026\n\n'
-            f'Jumlah Transaksi: {len([r for r in rows if r[1]])}\n'
+            f'Jumlah Transaksi: {len([r for r in rows if r[2]])}\n'
             f'Total Komisi: Rp {total_komisi:,}'
         )
         await update.message.reply_text(msg)
