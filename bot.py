@@ -58,7 +58,7 @@ async def bantuan(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         '📖 CARA INPUT:\n\n'
         '/input Nama Properti | Komisi | Nama:Rp | Status:Lunas\n\n'
         '📌 Contoh:\n'
-        '/input Ciragil I No5 | 165000000 | YG:115500000 | Status:Lunas\n\n'
+        '/input Ciragil I No5 | 165000000 | Riza:115500000 | Status:Lunas\n\n'
         '/input Savyavasa 3BR | 236474000 | ND:165531800 | BS:20691475 | SB:20691475 | Status:Lunas'
     )
     await update.message.reply_text(msg)
