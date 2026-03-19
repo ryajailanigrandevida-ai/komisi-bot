@@ -78,7 +78,8 @@ async def input_data(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         for nama, rp in (d['agents'] + [(None,None)]*4)[:4]:
             row.extend([nama or '', rp or ''])
         row.extend([d['status'], d['ket']])
-        sheet.append_row(row, value_input_option='USER_ENTERED', insert_data_option='INSERT_ROWS', table_range='A6')
+        sheet.append_row(row, value_input_option='USER_ENTERED')
+
 
         agents_txt = '\n'.join([f'  • {n}: Rp {int(str(r).replace(",","").replace(".","")  ):,}' for n,r in d['agents'] if n])
         reply = (
