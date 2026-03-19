@@ -81,18 +81,48 @@ async def input_data(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             if v and v[0]:
                 next_row = 6 + i + 1
 
-        # Nomor urut = posisi baris - 5
+        # Nomor urut
         next_no = next_row - 5
 
-        row = [next_no, d['tanggal'], d['properti'], '', komisi_int]
-        for nama, rp in (d['agents'] + [(None,None)]*4)[:4]:
-            rp_int = int(str(rp).replace(',','').replace('.','')) if rp else ''
-            row.extend([nama or '', rp_int])
-        row.extend([d['status'], d['ket']])
+        # Struktur kolom: A=No, B=Tanggal, C=Properti, D=Bulan(formula),
+        # E=Komisi, F=Ag1Nama, G=Ag1Rp, H=Ag1%(formula),
+        # I=Ag2Nama, J=Ag2Rp, K=Ag2%(formula),
+        # L=Ag3Nama, M=Ag3Rp, N=Ag3%(formula),
+        # O=Ag4Nama, P=Ag4Rp, Q=Ag4%(formula)
+        # R=Status, S=Ket
+
+        agents = (d['agents'] + [(None, None)] * 4)[:4]
+
+        def rp(v):
+            if not v: return ''
+            try: return int(str(v).replace(',','').replace('.',''))
+            except: return ''
+
+        row = [
+            next_no,           # A - No
+            d['tanggal'],      # B - Tanggal
+            d['properti'],     # C - Properti
+            '',                # D - Bulan (formula, kosongkan)
+            komisi_int,        # E - Komisi
+            agents[0][0] or '',# F - Agent1 Nama
+            rp(agents[0][1]),  # G - Agent1 Rp
+            '',                # H - Agent1 % (formula)
+            agents[1][0] or '',# I - Agent2 Nama
+            rp(agents[1][1]),  # J - Agent2 Rp
+            '',                # K - Agent2 % (formula)
+            agents[2][0] or '',# L - Agent3 Nama
+            rp(agents[2][1]),  # M - Agent3 Rp
+            '',                # N - Agent3 % (formula)
+            agents[3][0] or '',# O - Agent4 Nama
+            rp(agents[3][1]),  # P - Agent4 Rp
+            '',                # Q - Agent4 % (formula)
+            d['status'],       # R - Status
+            d['ket'],          # S - Keterangan
+        ]
 
         sheet.insert_row(row, next_row, value_input_option='USER_ENTERED')
 
-        agents_txt = '\n'.join([f'  • {n}: Rp {int(str(r).replace(",","").replace(".","")  ):,}' for n,r in d['agents'] if n])
+        agents_txt = '\n'.join([f'  • {n}: Rp {rp(r):,}' for n,r in d['agents'] if n])
         reply = (
             f'✅ Tersimpan!\n\n'
             f'🏠 {d["properti"]}\n'
