@@ -74,13 +74,14 @@ async def input_data(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         sheet = get_sheet()
         komisi_int = int(str(d['komisi']).replace(',','').replace('.',''))
 
-        # Cari baris kosong berikutnya di B6:B55
-        all_vals_b = sheet.get('B6:B55')
+        # Cari baris kosong berikutnya di C6:C55 (pakai kolom C/Properti)
+        all_vals = sheet.get('C6:C55')
         next_row = 6
-        for i, v in enumerate(all_vals_b):
+        for i, v in enumerate(all_vals):
             if v and v[0]:
                 next_row = 6 + i + 1
 
+        # Nomor urut berdasarkan posisi baris
         next_no = next_row - 5
 
         def rp(v):
@@ -101,7 +102,7 @@ async def input_data(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         for idx, (col_nama, col_rp) in enumerate(agent_cols):
             nama, r = agents[idx]
             if nama:
-                sheet.update(f'{col_nama}{next_row}', [[nama]])
+                sheet.update(f'{col_nama}{next_row}', [[nama.upper()]])
                 sheet.update(f'{col_rp}{next_row}', [[rp(r)]])
 
         # Copy formula % dari baris sebelumnya (H, K, N, Q)
