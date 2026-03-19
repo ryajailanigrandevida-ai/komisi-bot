@@ -74,26 +74,20 @@ async def input_data(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         sheet = get_sheet()
         komisi_int = int(str(d['komisi']).replace(',','').replace('.',''))
 
-        # Cari nomor urut berikutnya
-        all_vals_a = sheet.get('A6:A55')
-        next_no = 1
-        for v in all_vals_a:
-            if v and v[0]:
-                try:
-                    next_no = int(v[0]) + 1
-                except:
-                    pass
-
-        # Cari baris kosong berikutnya (B6:B55)
+        # Cari baris kosong berikutnya di B6:B55
         all_vals_b = sheet.get('B6:B55')
         next_row = 6
         for i, v in enumerate(all_vals_b):
             if v and v[0]:
                 next_row = 6 + i + 1
 
+        # Nomor urut = posisi baris - 5
+        next_no = next_row - 5
+
         row = [next_no, d['tanggal'], d['properti'], '', komisi_int]
         for nama, rp in (d['agents'] + [(None,None)]*4)[:4]:
-            row.extend([nama or '', int(str(rp).replace(',','').replace('.','')) if rp else ''])
+            rp_int = int(str(rp).replace(',','').replace('.','')) if rp else ''
+            row.extend([nama or '', rp_int])
         row.extend([d['status'], d['ket']])
 
         sheet.insert_row(row, next_row, value_input_option='USER_ENTERED')
