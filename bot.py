@@ -90,7 +90,7 @@ async def input_data(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
         agents = (d['agents'] + [(None, None)] * 4)[:4]
 
-        # Update kolom A (No), B (Tanggal), C (Properti), E (Komisi)
+        # Update kolom utama
         sheet.update(f'A{next_row}', [[next_no]])
         sheet.update(f'B{next_row}', [[d['tanggal']]])
         sheet.update(f'C{next_row}', [[d['properti']]])
@@ -104,7 +104,19 @@ async def input_data(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 sheet.update(f'{col_nama}{next_row}', [[nama]])
                 sheet.update(f'{col_rp}{next_row}', [[rp(r)]])
 
-        # Update Status (R) dan Ket (S)
+        # Copy formula % dari baris sebelumnya (H, K, N, Q)
+        prev_row = next_row - 1
+        for col in ['H', 'K', 'N', 'Q']:
+            try:
+                cell = sheet.acell(f'{col}{prev_row}', value_render_option='FORMULA')
+                formula = cell.value
+                if formula and str(formula).startswith('='):
+                    new_formula = formula.replace(str(prev_row), str(next_row))
+                    sheet.update(f'{col}{next_row}', [[new_formula]], value_input_option='USER_ENTERED')
+            except:
+                pass
+
+        # Update Status dan Ket
         sheet.update(f'R{next_row}', [[d['status']]])
         if d['ket']:
             sheet.update(f'S{next_row}', [[d['ket']]])
