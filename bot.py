@@ -1,4 +1,4 @@
-import os, json
+import os
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import gspread
@@ -67,6 +67,14 @@ def get_sheet():
         ws = spreadsheet.worksheet("Transaksi Komisi")
     return ws
 
+def get_spreadsheet():
+    creds = Credentials.from_service_account_info(
+        CREDS_DICT,
+        scopes=["https://www.googleapis.com/auth/spreadsheets"]
+    )
+    gc = gspread.authorize(creds)
+    return gc.open_by_key(SHEET_ID)
+
 def find_next_empty_row(sheet):
     all_values = sheet.get_all_values()
     for i, row in enumerate(all_values):
@@ -75,6 +83,26 @@ def find_next_empty_row(sheet):
         if not any(row[j] for j in [1, 2, 4] if j < len(row)):
             return i + 1
     return len(all_values) + 1
+
+def unhide_row(spreadsheet, sheet_id, row_index):
+    try:
+        body = {
+            "requests": [{
+                "updateDimensionProperties": {
+                    "range": {
+                        "sheetId": sheet_id,
+                        "dimension": "ROWS",
+                        "startIndex": row_index - 1,
+                        "endIndex": row_index
+                    },
+                    "properties": {"hiddenByUser": False},
+                    "fields": "hiddenByUser"
+                }
+            }]
+        }
+        spreadsheet.batch_update(body)
+    except Exception as e:
+        print("Unhide error:", e)
 
 def parse_input(text):
     parts = [x.strip() for x in text.split("|")]
@@ -120,7 +148,7 @@ async def bantuan(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "Contoh 1 agent:\n"
         "/input Ciragil I No5 | 165000000 | YG:115500000 | Status:Lunas\n\n"
         "Contoh banyak agent:\n"
-        "/input Savyavasa 3BR | 236474000 | ND:165531800 | BS:20691475 | SB:20691475 | Status:Lunas"
+        "/input Savyavasa | 236474000 | ND:165531800 | BS:20691475 | SB:20691475 | Status:Lunas"
     )
     await update.message.reply_text(msg)
 
@@ -134,32 +162,51 @@ async def input_data(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
     try:
         d = parse_input(raw)
-        sheet = get_sheet()
+        spreadsheet = get_spreadsheet()
+        try:
+            sheet = spreadsheet.get_worksheet_by_id(2041071178)
+        except:
+            sheet = spreadsheet.worksheet("Transaksi Komisi")
+
         komisi_int = int(str(d["komisi"]).replace(",", "").replace(".", "").strip())
         next_row = find_next_empty_row(sheet)
-        sheet.update_cell(next_row, 2, d["tanggal"])
-        sheet.update_cell(next_row, 3, d["properti"])
-        sheet.update_cell(next_row, 5, komisi_int)
+
+        # Nomor urut = next_row - 5 (karena data mulai row 6)
+        no_urut = next_row - 5
+
+        # Unhide baris ini dulu
+        unhide_row(spreadsheet, sheet.id, next_row)
+
+        # Tulis data
+        sheet.update_cell(next_row, 1, no_urut)       # A - No urut
+        sheet.update_cell(next_row, 2, d["tanggal"])   # B - Tanggal
+        sheet.update_cell(next_row, 3, d["properti"])  # C - Properti
+        sheet.update_cell(next_row, 5, komisi_int)     # E - Komisi
+
         agent_cols = [(6, 7), (9, 10), (12, 13), (15, 16)]
         for i, (nama, rp) in enumerate(d["agents"][:4]):
             nc, rc = agent_cols[i]
             sheet.update_cell(next_row, nc, nama)
             sheet.update_cell(next_row, rc, int(str(rp).replace(",", "").replace(".", "").strip()))
+
         sheet.update_cell(next_row, 30, d["status"])
         if d["ket"]:
             sheet.update_cell(next_row, 31, d["ket"])
+
         agents_txt = "\n".join([
             "  - " + n + ": Rp " + f"{int(str(r).replace(',','').replace('.','').strip()):,}"
             for n, r in d["agents"] if n
         ])
+
         reply = (
-            "Tersimpan di baris " + str(next_row) + "!\n\n"
+            "Tersimpan! No." + str(no_urut) + "\n\n"
             + d["properti"] + "\n"
             "Komisi: Rp " + f"{komisi_int:,}" + "\n"
             "Agent:\n" + agents_txt + "\n"
             "Status: " + d["status"]
         )
         await update.message.reply_text(reply)
+
     except Exception as e:
         await update.message.reply_text("Error: " + str(e))
 
