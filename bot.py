@@ -6,7 +6,7 @@ from google.oauth2.service_account import Credentials
 from datetime import datetime
 
 BOT_TOKEN    = os.environ.get(‘BOT_TOKEN’)
-SHEET_ID     = os.environ.get(‘SHEET_ID’)
+SHEET_ID     = os.environ.get(‘SHEET_ID’, ‘1T3hnFxZX8QH7ItnWN6Eg0MpzmubR9TUKBXCHOOQhNJ4’)
 ALLOWED_USER = int(os.environ.get(‘MY_TELEGRAM_ID’, ‘0’))
 
 CREDS_DICT = {
@@ -29,16 +29,22 @@ CREDS_DICT,
 scopes=[‘https://www.googleapis.com/auth/spreadsheets’]
 )
 gc = gspread.authorize(creds)
-return gc.open_by_key(SHEET_ID).worksheet(‘Transaksi Komisi’)
+spreadsheet = gc.open_by_key(SHEET_ID)
+# Akses tab by GID 2041071178 (Transaksi Komisi)
+try:
+ws = spreadsheet.get_worksheet_by_id(2041071178)
+except:
+ws = spreadsheet.worksheet(‘Transaksi Komisi’)
+return ws
 
 def find_next_empty_row(sheet):
-“”“Cari baris kosong pertama setelah baris 5 (header di baris 5, data mulai baris 6)”””
+“”“Cari baris kosong pertama setelah header (baris 5)”””
 all_values = sheet.get_all_values()
 for i, row in enumerate(all_values):
-if i < 5:  # skip header rows (0-4 = rows 1-5)
+if i < 5:  # skip header rows 1-5
 continue
-if not row[1] and not row[2]:  # kolom B dan C kosong
-return i + 1  # return nomor baris (1-indexed)
+if not any(row[j] for j in [1,2,4] if j < len(row)):  # B, C, E kosong
+return i + 1
 return len(all_values) + 1
 
 def parse_input(text):
@@ -79,8 +85,9 @@ if update.effective_user.id != ALLOWED_USER: return
 msg = (
 ‘📖 CARA INPUT:\n\n’
 ‘/input Nama Properti | Komisi | Nama:Rp | Status:Lunas\n\n’
-‘📌 Contoh:\n’
-‘/input Ciragil I No5 | 165000000 | Riza:115500000 | Status:Lunas\n\n’
+‘📌 Contoh 1 agent:\n’
+‘/input Ciragil I No5 | 165000000 | YG:115500000 | Status:Lunas\n\n’
+‘📌 Contoh banyak agent:\n’
 ‘/input Savyavasa 3BR | 236474000 | ND:165531800 | BS:20691475 | SB:20691475 | Status:Lunas’
 )
 await update.message.reply_text(msg)
@@ -97,20 +104,33 @@ sheet = get_sheet()
 komisi_int = int(str(d[‘komisi’]).replace(’,’,’’).replace(’.’,’’).strip())
 
 ```
-    # Siapkan data row: Tanggal, Properti, Komisi, A1nama, A1rp, A2nama, A2rp, A3nama, A3rp, A4nama, A4rp, ..., Status, Ket
-    agents_padded = (d['agents'] + [(None,None)]*4)[:4]
-    row_data = [d['tanggal'], d['properti'], komisi_int]
-    for nama, rp in agents_padded:
-        row_data.append(nama or '')
-        row_data.append(rp or '')
-    row_data.extend([d['status'], d['ket']])
-
-    # Tulis ke baris kosong pertama
+    # Cari baris kosong
     next_row = find_next_empty_row(sheet)
-    for col_idx, val in enumerate(row_data, start=1):
-        sheet.update_cell(next_row, col_idx, val)
 
-    agents_txt = '\n'.join([f'  • {n}: Rp {int(str(r).replace(",","").replace(".","").strip()):,}' for n,r in d['agents'] if n])
+    # Tulis data per kolom
+    # Kolom: B=Tanggal, C=Properti, D=Bulan(otomatis), E=Komisi
+    # F=Agent1Nama, G=Agent1Rp, I=Agent2Nama, J=Agent2Rp, dst
+    # AD=Status, AE=Keterangan
+    sheet.update_cell(next_row, 2, d['tanggal'])       # B - Tanggal
+    sheet.update_cell(next_row, 3, d['properti'])      # C - Properti
+    sheet.update_cell(next_row, 5, komisi_int)         # E - Komisi
+
+    # Agent columns: F-G, I-J, L-M, O-P
+    agent_cols = [(6,7), (9,10), (12,13), (15,16)]
+    for i, (nama, rp) in enumerate(d['agents'][:4]):
+        nc, rc = agent_cols[i]
+        sheet.update_cell(next_row, nc, nama)
+        sheet.update_cell(next_row, rc, int(str(rp).replace(',','').replace('.','').strip()))
+
+    sheet.update_cell(next_row, 30, d['status'])       # AD - Status
+    if d['ket']:
+        sheet.update_cell(next_row, 31, d['ket'])      # AE - Keterangan
+
+    agents_txt = '\n'.join([
+        f"  • {n}: Rp {int(str(r).replace(',','').replace('.','').strip()):,}"
+        for n,r in d['agents'] if n
+    ])
+
     reply = (
         f'✅ Tersimpan di baris {next_row}!\n\n'
         f'🏠 {d["properti"]}\n'
@@ -119,6 +139,7 @@ komisi_int = int(str(d[‘komisi’]).replace(’,’,’’).replace(’.’,�
         f'📋 Status: {d["status"]}'
     )
     await update.message.reply_text(reply)
+
 except Exception as e:
     await update.message.reply_text(f'❌ Error: {str(e)}')
 ```
@@ -128,19 +149,18 @@ if update.effective_user.id != ALLOWED_USER: return
 try:
 sheet = get_sheet()
 all_rows = sheet.get_all_values()
-# Ambil baris data (mulai row 6 = index 5)
-data_rows = [r for r in all_rows[5:] if r[1]]
+data_rows = [r for r in all_rows[5:] if len(r) > 2 and r[2]]
 if not data_rows:
 await update.message.reply_text(‘Belum ada data.’); return
 last5 = data_rows[-5:]
 msg = ‘📋 5 Transaksi Terakhir:\n\n’
 for r in reversed(last5):
 try:
-komisi = int(str(r[2]).replace(’,’,’’).replace(’.’,’’))
+komisi = int(str(r[4]).replace(’,’,’’).replace(’.’,’’))
 status = r[29] if len(r) > 29 else ‘’
-msg += f’🏠 {r[1]}\n💰 Rp {komisi:,}  |  {status}\n\n’
+msg += f’🏠 {r[2]}\n💰 Rp {komisi:,}  |  {status}\n\n’
 except:
-msg += f’🏠 {r[1]}\n\n’
+msg += f’🏠 {r[2]}\n\n’
 await update.message.reply_text(msg)
 except Exception as e:
 await update.message.reply_text(f’❌ Error: {str(e)}’)
@@ -150,11 +170,11 @@ if update.effective_user.id != ALLOWED_USER: return
 try:
 sheet = get_sheet()
 all_rows = sheet.get_all_values()
-data_rows = [r for r in all_rows[5:] if r[1]]
+data_rows = [r for r in all_rows[5:] if len(r) > 2 and r[2]]
 total_komisi = 0
 for r in data_rows:
 try:
-total_komisi += int(str(r[2]).replace(’,’,’’).replace(’.’,’’))
+total_komisi += int(str(r[4]).replace(’,’,’’).replace(’.’,’’))
 except: pass
 msg = (
 f’📊 TOTAL KOMISI 2026\n\n’
