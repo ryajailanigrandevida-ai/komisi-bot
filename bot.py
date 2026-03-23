@@ -193,6 +193,33 @@ async def input_data(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         if d["ket"]:
             sheet.update_cell(next_row, 31, d["ket"])
 
+        # Pindahkan TOTAL row ke bawah transaksi terakhir
+        total_row = next_row + 1
+        # Hapus total lama dulu (cari di semua baris)
+        all_vals = sheet.get_all_values()
+        for i, row in enumerate(all_vals):
+            if row and row[0] == "TOTAL" and i != total_row - 1:
+                # Clear old total row
+                sheet.batch_clear([f"A{i+1}:AE{i+1}"])
+        # Tulis total baru
+        total_cols = {
+            5:  f"=SUM(E6:E{next_row})",
+            7:  f"=SUM(G6:G{next_row})",
+            10: f"=SUM(J6:J{next_row})",
+            13: f"=SUM(M6:M{next_row})",
+            16: f"=SUM(P6:P{next_row})",
+            18: f"=SUM(R6:R{next_row})",
+            20: f"=SUM(T6:T{next_row})",
+            22: f"=SUM(V6:V{next_row})",
+            24: f"=SUM(X6:X{next_row})",
+            26: f"=SUM(Z6:Z{next_row})",
+            28: f"=SUM(AB6:AB{next_row})",
+        }
+        sheet.update_cell(total_row, 1, "TOTAL")
+        for col, formula in total_cols.items():
+            sheet.update_cell(total_row, col, formula)
+        unhide_row(spreadsheet, sheet.id, total_row)
+
         agents_txt = "\n".join([
             "  \u2022 " + n + ": Rp " + f"{int(str(r).replace(',','').replace('.','').strip()):,}"
             for n, r in d["agents"] if n
