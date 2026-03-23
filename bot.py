@@ -194,16 +194,16 @@ async def input_data(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             sheet.update_cell(next_row, 31, d["ket"])
 
         agents_txt = "\n".join([
-            "  - " + n + ": Rp " + f"{int(str(r).replace(',','').replace('.','').strip()):,}"
+            "  \u2022 " + n + ": Rp " + f"{int(str(r).replace(',','').replace('.','').strip()):,}"
             for n, r in d["agents"] if n
         ])
 
         reply = (
-            "Tersimpan! No." + str(no_urut) + "\n\n"
-            + d["properti"] + "\n"
-            "Komisi: Rp " + f"{komisi_int:,}" + "\n"
-            "Agent:\n" + agents_txt + "\n"
-            "Status: " + d["status"]
+            "\u2705 Tersimpan! No." + str(no_urut) + "\n\n"
+            "\U0001F3E0 " + d["properti"] + "\n"
+            "\U0001F4B0 Komisi: Rp " + f"{komisi_int:,}" + "\n"
+            "\U0001F464 Agent:\n" + agents_txt + "\n"
+            "\U0001F4CB Status: " + d["status"]
         )
         await update.message.reply_text(reply)
 
